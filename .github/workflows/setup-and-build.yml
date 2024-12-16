@@ -1,0 +1,62 @@
+name: Setup and Run Project
+
+on:
+  push:
+    branches:
+      - main  # יופעל בכל דחיפה לבראנץ' הראשי
+
+jobs:
+  setup-and-build:
+    runs-on: ubuntu-latest  # סביבת Linux
+
+    steps:
+      # שלב 1: שליפת הקוד
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # שלב 2: התקנת Python
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      # שלב 3: התקנת Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # שלב 4: הרצת הסקריפט
+      - name: Run setup script
+        run: |
+          python setup_project.py
+
+      # שלב 5: בניית ה-Backend
+      - name: Install Backend dependencies
+        working-directory: ocr-forms/backend
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install -r requirements.txt
+          uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+
+      # שלב 6: התקנת ה-Frontend
+      - name: Install Frontend dependencies
+        working-directory: ocr-forms/frontend
+        run: |
+          npm install
+          npm run build
+
+      # שלב 7: הפעלת Docker Compose (אופציונלי)
+      - name: Run Docker Compose
+        run: |
+          cd ocr-forms
+          docker-compose up --build -d
+
+      # שלב 8: בדיקת ריצה
+      - name: Check backend health
+        run: |
+          curl --retry 10 --retry-delay 5 http://localhost:8000 || exit 1
+
+      - name: Finish
+        run: echo "Project setup and build completed successfully!"
